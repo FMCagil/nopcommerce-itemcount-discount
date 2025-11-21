@@ -1,0 +1,165 @@
+@model Nop.Plugin.DiscountRules.ItemCount.Models.ItemCountRequirementModel
+@{
+    Layout = "";
+}
+
+<script>
+    $(document).ready(function () {
+        $('#saveitemcountrequirement@(Model.RequirementId)').click(function () {
+
+            var productIdsRaw = $("#@Html.IdFor(m => m.ProductIdsRaw)").val();
+            var minQuantity = $("#@Html.IdFor(m => m.MinQuantity)").val();
+            var maxQuantity = $("#@Html.IdFor(m => m.MaxQuantity)").val();
+
+            var selectedCurrencyIds = [];
+            $("input[name='@ViewData.TemplateInfo.GetFullHtmlFieldName("SelectedCurrencyIds")']:checked")
+                .each(function () {
+                    selectedCurrencyIds.push($(this).val());
+                });
+
+            var discountId = @Model.DiscountId;
+            var requirementId = @Model.RequirementId;
+
+            var postData = {
+                DiscountId: discountId,
+                RequirementId: requirementId,
+                ProductIdsRaw: productIdsRaw,
+                MinQuantity: minQuantity,
+                MaxQuantity: maxQuantity,
+                SelectedCurrencyIds: selectedCurrencyIds
+            };
+            addAntiForgeryToken(postData);
+
+            alert('click');
+
+            $.ajax({
+                cache: false,
+                type: "POST",
+                url: "@Url.Action("Configure", "ItemCountConfig")",
+                data: postData,
+                success: function (data, textStatus, jqXHR) {
+
+                    var $alertInfoEl = $("#saveitemcountrequirementAlert-info");
+                    let response = jqXHR.responseJSON;
+                    if (response instanceof Object && response.hasOwnProperty('Errors')) {
+                        var errorMessages = '';
+                        $.each(response.Errors, function (i, error) {
+                            errorMessages += error;
+                            if (response.Errors.length - 1 != i)
+                                errorMessages += '</br>';
+                        });
+                        $alertInfoEl.html(errorMessages);
+                        $("#saveitemcountrequirementAlert").click();
+
+                        return;
+                    }
+
+                    $('#pnl-save-requirement-result@(Model.RequirementId)').fadeIn("slow").delay(1000).fadeOut("slow");
+                    //notify parent if it's a new requirement
+                    @if (Model.RequirementId == 0)
+                    {
+                        <text>$("#discountRequirementContainer").trigger('nopnewdiscountruleadded', [data.NewRequirementId]);</text>
+                    }
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    var $alertInfoEl = $("#saveitemcountrequirementAlert-info");
+
+                    // display default error
+                    $alertInfoEl.html('@T("Admin.Promotions.Discounts.Requirements.FailedToSave")');
+
+                    $("#saveitemcountrequirementAlert").click();
+                }
+            });
+        });
+    });
+</script>
+
+<input asp-for="RequirementId" type="hidden"/>
+<input asp-for="DiscountId" type="hidden"/>
+
+<div class="form-group row">
+    <div class="col-md-3">
+        <label asp-for="ProductIdsRaw" class="control-label">Kampanya Ürünleri (ID)</label>
+    </div>
+    <div class="col-md-9">
+        <textarea asp-for="ProductIdsRaw" class="form-control" rows="2"></textarea>
+        <small class="form-text text-muted">
+            Format: 12,15,18 (Boş bırakırsan tüm ürünlerde geçerli olur)
+        </small>
+    </div>
+</div>
+
+<div class="form-group row">
+    <div class="col-md-3">
+        <label asp-for="MinQuantity" class="control-label">Minimum Adet</label>
+    </div>
+    <div class="col-md-3">
+        <input asp-for="MinQuantity" class="form-control"/>
+        <small class="form-text text-muted">0 veya boş → sınır yok</small>
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="MaxQuantity" class="control-label">Maksimum Adet</label>
+    </div>
+    <div class="col-md-3">
+        <input asp-for="MaxQuantity" class="form-control"/>
+        <small class="form-text text-muted">0 → üst sınır yok</small>
+    </div>
+</div>
+
+<div class="form-group row">
+    <div class="col-md-3">
+        <label class="control-label">Geçerli Para Birimleri</label>
+    </div>
+    <div class="col-md-9">
+        @if (Model.AvailableCurrencies?.Any() == true)
+        {
+            @foreach (var item in Model.AvailableCurrencies)
+            {
+                var isChecked = Model.SelectedCurrencyIds != null && Model.SelectedCurrencyIds.Contains(int.Parse(item.Value));
+
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           name="@(ViewData.TemplateInfo.GetFullHtmlFieldName("SelectedCurrencyIds"))"
+                           value="@item.Value"
+                           @(isChecked ? "checked=\"checked\"" : "")/>
+                    <label class="form-check-label">@item.Text</label>
+                </div>
+            }
+
+            <small class="form-text text-muted">Hiç seçmezsen tüm para birimlerinde geçerli olur.</small>
+        }
+        else
+        {
+            <span class="text-muted">Sistemde tanımlı para birimi bulunamadı.</span>
+        }
+    </div>
+</div>
+
+<div class="form-group row">
+    <div class="col-md-3"></div>
+    <div class="col-md-9">
+        <div class="requirement-data-buttons">
+            <input type="button" id="saveitemcountrequirement@(Model.RequirementId)" class="btn btn-primary"
+                   value="@T("Admin.Common.Save")"/>
+        </div>
+
+        <span id="pnl-save-requirement-result@(Model.RequirementId)"
+              class="text-success"
+              style="display:none; margin-left:10px;">
+            Kaydedildi
+        </span>
+    </div>
+</div>
+
+<div class="form-group row">
+    <div class="offset-md-3 col-md-9 requirement-messages-col">
+        <div id="pnl-save-requirement-result@(Model.RequirementId)" style="display: none;"
+             class="text-green margin-t-5">
+            @T("Admin.Promotions.Discounts.Requirements.Saved")
+        </div>
+    </div>
+</div>
+
+<nop-alert asp-alert-id="saveitemcountrequirementAlert"/>

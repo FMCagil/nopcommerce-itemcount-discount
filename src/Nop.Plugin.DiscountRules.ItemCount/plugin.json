@@ -1,0 +1,11 @@
+{
+  "Group": "Discount requirements",
+  "FriendlyName": "Item Count Discount Rule",
+  "SystemName": "DiscountRequirement.ItemCount",
+  "Version": "1.00",
+  "SupportedVersions": [ "4.50" ],
+  "Author": "Fehmi Cagil",
+  "DisplayOrder": 1,
+  "FileName": "Nop.Plugin.DiscountRules.ItemCount.dll",
+  "Description": "Apply order discounts based on product count and currency rules."
+}
